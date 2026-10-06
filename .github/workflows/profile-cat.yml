@@ -1,0 +1,45 @@
+name: Update profile cat
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/profile-cat.yml"
+      - "scripts/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-cat
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+      - name: Test public-activity filtering and rendering
+        run: node --test scripts/update-cat.test.mjs
+      - name: Generate public-activity snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/update-cat.mjs
+      - name: Generate reduced-motion scenes and validate assets
+        run: |
+          python3 scripts/static-scenes.py
+          python3 scripts/check-assets.py
+      - name: Commit artwork
+        run: |
+          git add -- assets/cat-light.svg assets/cat-dark.svg assets/cat-light-static.svg assets/cat-dark-static.svg assets/cat-light-mobile.svg assets/cat-dark-mobile.svg assets/cat-light-mobile-static.svg assets/cat-dark-mobile-static.svg
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Refresh public-activity cat"
+          git pull --rebase origin main
+          git push origin HEAD:main
