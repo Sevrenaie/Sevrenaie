@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolve } from "node:path";
+import { foodFromPushes } from "./feeding.mjs";
 
 process.env.PET_TZ_OFFSET_MINUTES = "480";
 const { decide, lastPushedRepo, ownerHour } = await import("./vendor/tomo/state.ts");
@@ -46,9 +47,12 @@ export function prepareActivity(data, now = new Date()) {
   // Repository pushed_at may belong to another author, so only owner events
   // are used as activity evidence.
   const status = decide(events, {}, {}, now);
+  const feeding = foodFromPushes(events, now);
   if (!status.apiOk) status.caption = "quiet paws - no recent public pushes in the available feed";
   return {
     ...status,
+    state: feeding.hungry ? "hungry" : status.state,
+    feeding,
     hackingOn: lastPushedRepo(events) ?? "",
     hour: ownerHour(now),
     updatedAt: now.toISOString().slice(0, 16).replace("T", " ") + " UTC",
@@ -72,7 +76,7 @@ export async function updateCat({ fetcher = fetch, outputDir = resolve(ROOT, "as
   for (const [name, svg] of Object.entries(scenes)) {
     await writeFile(resolve(outputDir, name), svg, "utf8");
   }
-  console.log(`Cat snapshot: ${activity.state}; ${activity.updatedAt}. Public activity only.`);
+  console.log(`Cat snapshot: ${activity.state}; food ${activity.feeding.level.toFixed(1)}%; ${activity.updatedAt}. Public activity only.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

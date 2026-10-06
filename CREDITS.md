@@ -1,6 +1,6 @@
 # Credits and Maintenance
 
-- Pixel cat: adapted from [prsdx/YourTomo](https://github.com/prsdx/YourTomo), commit `62052fd7f26da4d43bf5eb6d44499dcb6c82ecf9`, MIT license. Only `render.ts`, `sprites.ts`, and `state.ts` are vendored in `scripts/vendor/tomo/`. Changes: pale-blue palettes, shorter scene text, bounded footer, compact mobile layout, timestamp and accessible description.
+- Pixel cat: adapted from [prsdx/YourTomo](https://github.com/prsdx/YourTomo), commit `62052fd7f26da4d43bf5eb6d44499dcb6c82ecf9`, MIT license. Only `render.ts`, `sprites.ts`, and `state.ts` are vendored in `scripts/vendor/tomo/`. Changes: pale-blue palettes, compact mobile layout, accessible descriptions, gentle feeding poses, smiling faces, meal hearts, and a data-driven food bowl.
 - Technology icons: [tandpfun/skill-icons](https://github.com/tandpfun/skill-icons), commit `7f7e691e71aec64e8354bf697835e009d1ad80f8`, MIT license in `assets/skill-icons-LICENSE`. Locally stored light/dark icon strips retain the upstream artwork.
 - Project screenshot: from this account's public [Agent_Platform](https://github.com/Sevrenaie/Agent_Platform) repository.
 - The original snowy-cat banner and paw trail are retained.
@@ -13,8 +13,17 @@ the profile repository itself are excluded. Repository `pushed_at` is not used
 as evidence of the owner's work. The public feed is limited to the latest 100
 available events, so a quiet feed does not mean there was no other activity.
 
+Each eligible public push adds 25% of a bowl, capped at 100%. A serving is
+consumed over 48 hours of elapsed time. The calculation replays recent pushes
+in time order, discards overflow, and deduplicates event IDs. Private work and
+profile updates do not feed the cat. Food below 12.5% produces a gentle,
+occasional reminder; otherwise the cat nibbles, smiles, and releases hearts.
+
 The workflow runs on a six-hour schedule and can be run manually. GitHub may
-delay scheduled runs, and the SVGs show the UTC time of their last snapshot.
+delay scheduled runs. The bowl is a snapshot from the available public feed,
+not a live measure of all work. Its level falls on subsequent scheduled
+updates; the small animated bite is decorative. Page visits do not consume
+or refill the stored ration. Old activity labels and timestamps stay hidden.
 No personal access token, external app, or hosted statistics service is needed.
 API failures fail the job without replacing the previous artwork.
 

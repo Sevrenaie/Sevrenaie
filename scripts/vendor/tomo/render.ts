@@ -346,6 +346,111 @@ function routineCat(state: string, pal: Pal, colors: Record<string, string>, wee
     return cat;
 }
 
+function gentleFace(pal: Pal, happy: boolean, hungry: boolean): string {
+    const eyes = happy
+        ? "M27 98 L33 92 L39 98 M78 98 L84 92 L90 98"
+        : hungry
+            ? "M27 94 Q33 99 39 96 M78 96 Q84 99 90 94"
+            : "M33 93 L33 97 M84 93 L84 97";
+    const mouth = hungry ? "M53 114 Q59 109 65 114"
+        : "M48 109 Q48 117 54 115 Q60 114 60 109 Q60 117 66 115 Q72 114 72 109";
+    return `<g data-face="${happy ? "happy" : hungry ? "hungry" : "calm"}" fill="none" stroke="${pal.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">` +
+        `<path d="${eyes}"/><path d="${mouth}"/></g>`;
+}
+
+function feedingHearts(pal: Pal): string {
+    return `<g data-role="meal-hearts" opacity="1">` +
+        `<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.32;0.36;0.52;0.57;1" dur="32s" repeatCount="indefinite"/>` +
+        [[92, 58, "0s"], [112, 76, "1.1s"], [77, 42, "1.8s"]].map(([x, y, begin]) =>
+            `<g transform="translate(${x} ${y})" shape-rendering="crispEdges"><g opacity="0.8">` +
+            `<animateTransform attributeName="transform" type="translate" values="0 0;4 -15" dur="2.8s" begin="${begin}" repeatCount="indefinite"/>` +
+            `<animate attributeName="opacity" values="0;0.85;0.85;0" keyTimes="0;0.25;0.65;1" dur="2.8s" begin="${begin}" repeatCount="indefinite"/>` +
+            rects(sprites.HEART, { h: pal.heart }, 0, 0, 2).join("") + "</g></g>"
+        ).join("") + "</g>";
+}
+
+function mealBowl(pal: Pal, level: number): string {
+    const x = BOWL_X;
+    const fillHeight = Number((Math.max(0, Math.min(100, level)) * 0.28).toFixed(3));
+    const parts = [
+        `<g data-role="food-bowl" data-food-level="${level}">`,
+        `<ellipse cx="${x + 36}" cy="156" rx="40" ry="4" fill="${pal.ground}" opacity="0.4"/>`,
+        `<path d="M${x + 2} 133 Q${x + 36} 123 ${x + 70} 133 L${x + 59} 153 Q${x + 36} 162 ${x + 13} 153Z" fill="${pal.body}" stroke="${pal.collar}" stroke-width="2"/>`,
+        `<ellipse cx="${x + 36}" cy="133" rx="32" ry="7" fill="${pal.bg}" stroke="${pal.collar}" stroke-width="2"/>`,
+        `<defs><clipPath id="meal-fill"><rect x="${x + 7}" y="${138 - fillHeight}" width="58" height="${fillHeight}" /></clipPath></defs>`,
+        `<g data-role="food-portions" clip-path="url(#meal-fill)">`,
+    ];
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 6; col++) {
+            const inset = row === 3 ? 9 : 0;
+            if (row === 3 && (col === 0 || col === 5)) continue;
+            parts.push(`<rect x="${x + 10 + col * 8 + (row % 2 ? 2 : 0)}" y="${132 - row * 6}" width="${6 - inset / 9}" height="5" rx="2" fill="${(row + col) % 3 ? pal.tag : pal.pink}"/>`);
+        }
+    }
+    parts.push("</g>");
+    // Only this little surface bite disappears; the stored ration is determined
+    // by elapsed time and public pushes, never by how often visitors open it.
+    if (level >= 12.5) {
+        parts.push(`<circle data-role="little-bite" cx="${x + 36}" cy="${135 - fillHeight}" r="2.5" fill="${pal.pink}">` +
+            `<animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.27;0.32;1" dur="32s" repeatCount="1" fill="freeze"/></circle>`);
+    }
+    parts.push(`<path d="M${x + 32} 143 Q${x + 32} 140 ${x + 36} 143 Q${x + 40} 140 ${x + 40} 143 Q${x + 40} 146 ${x + 36} 149 Q${x + 32} 146 ${x + 32} 143" fill="${pal.bg}"/>`, "</g>");
+    return parts.join("");
+}
+
+function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean }): string[] {
+    const { level, hungry } = feeding;
+    const start = hungry ? CAT_AT_BOWL : HOME_X;
+    const parts = [
+        `<g data-role="gentle-feeding" data-mood="${hungry ? "hungry" : "content"}">`,
+        `<rect x="${HOME_X - 16}" y="${GROUND_Y - 40}" width="80" height="40" fill="none" stroke="${pal.ground}" stroke-width="2"/>`,
+        `<path d="M${HOME_X - 16} 118 L${HOME_X + 24} 106 L${HOME_X + 64} 118" fill="none" stroke="${pal.ground}" stroke-width="2"/>`,
+        `<g transform="translate(${YARN_X} 0)">${yarnProp(pal, 32).join("")}</g>`,
+        `<g data-role="cat-position" transform="translate(${start} 0)">`,
+    ];
+    if (!hungry) {
+        const xs = [HOME_X, HOME_X, CAT_AT_BOWL, CAT_AT_BOWL, CAT_AT_YARN, CAT_AT_YARN, HOME_X, HOME_X];
+        parts.push(`<animateTransform attributeName="transform" type="translate" values="${xs.map(x => `${x} 0`).join(";")}" keyTimes="0;0.10;0.22;0.54;0.66;0.76;0.90;1" calcMode="spline" keySplines="${Array(7).fill("0.4 0 0.2 1").join(";")}" dur="32s" repeatCount="indefinite"/>`);
+    }
+    // One solid silhouette moves by two pixels: no detached head or large gulp.
+    parts.push(`<g data-role="gentle-nibble">`);
+    if (!hungry) parts.push(`<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 2;0 0;0 2;0 0;0 0" keyTimes="0;0.24;0.28;0.31;0.35;0.38;1" dur="32s" repeatCount="indefinite"/>`);
+    // Keep adjacent sprite rows solid at fractional animation positions.
+    parts.push(`<g data-role="cat-silhouette" shape-rendering="crispEdges">`);
+    parts.push(...rects(sprites.SIT_FRONT, { X: pal.body, p: pal.pink, o: pal.body }, 0, CAT_Y));
+    parts.push(...pixels(sprites.SIT_INNER_EARS, pal.pink, 0, CAT_Y));
+    parts.push(...pixels(sprites.SIT_WHISKERS, pal.body, 0, CAT_Y));
+    parts.push(...pixels(sprites.SIT_COLLAR_BAND, pal.collar, 0, CAT_Y));
+    parts.push(...pixels(sprites.SIT_COLLAR_TAG, pal.tag, 0, CAT_Y));
+    parts.push(...tailWag(pal, CAT_Y, hungry ? "4s" : "2.8s"));
+    parts.push("</g>");
+    parts.push(`<rect x="22" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/><rect x="85" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/>`);
+    if (hungry) {
+        parts.push(gentleFace(pal, false, true));
+    } else {
+        parts.push(`<g opacity="0"><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.24;0.26;0.55;0.58;1" dur="32s" repeatCount="indefinite"/>${gentleFace(pal, false, false)}</g>`);
+        parts.push(`<g opacity="1"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.24;0.26;0.55;0.58;1" dur="32s" repeatCount="indefinite"/>${gentleFace(pal, true, false)}</g>`);
+        parts.push(`<g data-role="snack-paw" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.24;0.26;0.36;0.39;1" dur="32s" repeatCount="indefinite"/>` +
+            `<path d="M88 126 Q76 123 74 116" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
+            `<circle cx="74" cy="116" r="5" fill="${pal.body}"/></g>`);
+    }
+    parts.push("</g>");
+    if (!hungry) parts.push(feedingHearts(pal));
+    parts.push("</g>", mealBowl(pal, level));
+    if (hungry) {
+        const width = 156;
+        const x = Math.min(WIDTH - width - 14, CAT_AT_BOWL + 2);
+        const hint = level > 0 ? "&#x996D;&#x996D;&#x5FEB;&#x6CA1;&#x5566;~" : "&#x7B49;&#x4E00;&#x53E3;&#x996D;&#x996D;~";
+        parts.push(`<g data-role="hungry-reminder" opacity="1">` +
+            `<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.18;0.22;0.47;0.51;1" dur="24s" repeatCount="indefinite"/>` +
+            `<rect x="${x}" y="16" width="${width}" height="32" rx="8" fill="${pal.bg}" stroke="${pal.ground}" stroke-width="1.5"/>` +
+            `<path d="M${x + 28} 48 L${x + 36} 55 L${x + 41} 48" fill="${pal.bg}" stroke="${pal.ground}" stroke-width="1.5"/>` +
+            `<text x="${x + width / 2}" y="37" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" fill="${pal.text}">${hint}</text></g>`);
+    }
+    parts.push("</g>");
+    return parts;
+}
+
 export interface SceneOpts {
     hackingOn?: string;   // repo name for the rotating "hacking on X" bubble
     streakDays?: number;  // >= 3 lights the campfire
@@ -362,6 +467,7 @@ export interface SceneOpts {
     updatedAt?: string;   // UTC timestamp of this activity snapshot
     compact?: boolean;
     quiet?: boolean;     // hide speech bubbles and public-activity labels
+    feeding?: { level: number; hungry: boolean };
 }
 
 export function buildSvg(state: string, caption: string, palette = "dark", greeting = "hey! welcome to my corner", contact = "", attribution = true, opts: SceneOpts = {}): string {
@@ -372,6 +478,10 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
     BOWL_X = opts.compact ? 360 : 640;
     CAT_AT_BOWL = opts.compact ? 235 : 500;
     CAT_AT_YARN = opts.compact ? 115 : 320;
+    if (opts.feeding && opts.compact) {
+        YARN_X = 195;
+        CAT_AT_YARN = 75;
+    }
     const pal: Pal = { ...PALETTES[palette] };
     PAL_CURRENT = pal;
     if (opts.bodyOverride) pal.body = opts.bodyOverride;
@@ -379,7 +489,7 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
         pal.accent = opts.accent;
         pal.collar = opts.accent;
     }
-    if (state === "overheat") pal.body = "#ff7b72";
+    if (state === "overheat" && !opts.feeding) pal.body = "#ff7b72";
     const colors = { X: pal.body, p: pal.pink };
     const description = opts.quiet
         ? "A pale-blue pixel cat with a bowl, yarn, and a little home."
@@ -401,7 +511,9 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
     if (opts.weekend && state !== "sleeping" && state !== "hibernating") {
         parts.push(...rects(sprites.LEMONADE, { y: pal.lemon, s: pal.pink }, BOWL_X + 110, GROUND_Y - 6 * 3, 3));
     }
-    if (state === "sleeping" || state === "hibernating") {
+    if (opts.feeding) {
+        parts.push(...gentleFeedingScene(pal, opts.feeding));
+    } else if (state === "sleeping" || state === "hibernating") {
         parts.push(...sleepingCat(pal, colors, opts.topLang ?? ""));
     } else {
         const dur = STATE_TEMPO[state] ?? 32;

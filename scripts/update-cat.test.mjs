@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { getPublicData, prepareActivity, renderScenes, updateCat } from "./update-cat.mjs";
 import { buildSvg } from "./vendor/tomo/render.ts";
 import { VALID_STATES } from "./vendor/tomo/state.ts";
+import { foodFromPushes } from "./feeding.mjs";
 
 const now = new Date("2026-10-06T08:00:00Z");
 const repo = { private: false, full_name: "Sevrenaie/Agent_Platform", owner: { login: "Sevrenaie" } };
@@ -47,12 +48,16 @@ test("excludes private, foreign, future, bot and profile-update activity", () =>
   assert.equal(activity.hackingOn, "Agent_Platform");
   assert.match(activity.caption, /push 1h ago/);
   assert.equal(activity.hour, 16);
+  assert.ok(Math.abs(activity.feeding.level - (25 - 25 / 48)) < 1e-9);
+  assert.equal(activity.feeding.hungry, false);
 });
 
 test("empty feeds stay honest and do not use other authors' pushed_at", () => {
   const activity = prepareActivity({ events: [], repos: [{ ...repo, pushed_at: now.toISOString() }] }, now);
   assert.match(activity.caption, /no recent public pushes in the available feed/);
   assert.equal(activity.hackingOn, "");
+  assert.equal(activity.feeding.level, 0);
+  assert.equal(activity.state, "hungry");
 });
 
 test("HTTP and malformed-response failures leave existing artwork untouched", async () => {
@@ -104,5 +109,77 @@ test("renderer defaults retain escaped captions for non-quiet consumers", () => 
     assert.match(svg, /&lt;not markup&gt;/);
     assert.doesNotMatch(svg, /<not markup>/);
     assert.match(svg, /2026-10-06 08:00 UTC/);
+  }
+});
+
+const pushAt = (hoursAgo, id) => ({
+  ...event, id, created_at: new Date(now.getTime() - hoursAgo * 3600000).toISOString(),
+});
+
+test("each push adds a quarter bowl and a serving lasts 48 hours", () => {
+  assert.equal(foodFromPushes([pushAt(0, "a")], now).level, 25);
+  assert.equal(foodFromPushes([pushAt(0, "a"), pushAt(0, "b")], now).level, 50);
+  assert.equal(foodFromPushes([pushAt(24, "a")], now).level, 12.5);
+  assert.equal(foodFromPushes([pushAt(48, "a")], now).level, 0);
+  assert.equal(foodFromPushes([pushAt(72, "a")], now).level, 0);
+  assert.equal(foodFromPushes([pushAt(25, "a")], now).hungry, true);
+  assert.equal(foodFromPushes([pushAt(24, "a")], now).hungry, false);
+});
+
+test("ration caps overflow, decays chronologically and does not mutate input", () => {
+  const pushes = Array.from({ length: 8 }, (_, index) => pushAt(0, String(index)));
+  assert.equal(foodFromPushes(pushes, now).level, 100);
+  assert.equal(foodFromPushes(pushes, new Date(now.getTime() + 48 * 3600000)).level, 75);
+  assert.equal(foodFromPushes(pushes, new Date(now.getTime() + 192 * 3600000)).level, 0);
+  const unordered = [pushAt(0, "new"), pushAt(48, "old")];
+  const original = structuredClone(unordered);
+  assert.equal(foodFromPushes(unordered, now).level, 25);
+  assert.deepEqual(unordered, original);
+});
+
+test("only unique, valid pushes add food; old activity never accumulates forever", () => {
+  const valid = pushAt(0, "valid");
+  const feeding = foodFromPushes([
+    valid, valid, pushAt(-1, "future"), pushAt(300, "old"),
+    { ...valid, id: "bad-date", created_at: "invalid" },
+    { ...valid, id: "not-a-push", type: "IssuesEvent" },
+  ], now);
+  assert.equal(feeding.level, 25);
+});
+
+test("regular feeding keeps the remaining ration across the eight-day boundary", () => {
+  const pushes = [
+    ...Array.from({ length: 4 }, (_, index) => pushAt(200, `old-${index}`)),
+    pushAt(24, "recent"),
+  ];
+  const expected = 100 + 25 - 200 * 25 / 48;
+  assert.ok(Math.abs(foodFromPushes(pushes, now).level - expected) < 1e-9);
+});
+
+test("profile feeding uses gentle faces, meal hearts and only low-food reminders", () => {
+  for (const level of [0, 6, 12.4999, 12.5, 25, 100]) {
+    const hungry = level < 12.5;
+    const scenes = renderScenes({
+      state: hungry ? "hungry" : "zoomies", caption: "hidden",
+      hour: 12, feeding: { level, hungry },
+    });
+    for (const svg of Object.values(scenes)) {
+      assert.equal(Number(svg.match(/data-food-level="([^"]+)"/)[1]), level);
+      assert.match(svg, /data-role="gentle-feeding"/);
+      assert.match(svg, /data-role="cat-silhouette" shape-rendering="crispEdges"/);
+      assert.doesNotMatch(svg, /one small step|quiet paws|PUBLIC ACTIVITY|SNAPSHOT/);
+      if (hungry) {
+        assert.match(svg, /data-role="hungry-reminder"/);
+        assert.match(svg, /data-face="hungry"/);
+        assert.doesNotMatch(svg, /data-role="meal-hearts"|data-role="little-bite"/);
+      } else {
+        assert.match(svg, /data-face="happy"/);
+        assert.match(svg, /data-role="meal-hearts"/);
+        assert.match(svg, /data-role="little-bite"/);
+        assert.doesNotMatch(svg, /data-role="hungry-reminder"/);
+        assert.match(svg, /values="0 0;0 0;0 2;0 0;0 2;0 0;0 0"/);
+        assert.doesNotMatch(svg, /values="[^"]*;0 8(?:;|")/);
+      }
+    }
   }
 });

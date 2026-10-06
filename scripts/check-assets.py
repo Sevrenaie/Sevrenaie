@@ -22,6 +22,16 @@ for asset in (ROOT / "assets").glob("*.svg"):
                         "last public push", "PUBLIC ACTIVITY", "SNAPSHOT",
                         "hello, little visitor", "a soft spot", "a little break"):
             assert removed not in copy, (asset, removed)
+        bowl = root.find(f".//{SVG}g[@data-role='food-bowl']")
+        assert bowl is not None, asset
+        level = float(bowl.attrib["data-food-level"])
+        assert 0 <= level <= 100, asset
+        reminder = root.find(f".//{SVG}g[@data-role='hungry-reminder']")
+        hearts = root.find(f".//{SVG}g[@data-role='meal-hearts']")
+        if level < 12.5:
+            assert reminder is not None and hearts is None, asset
+        else:
+            assert reminder is None and hearts is not None, asset
 
 readme = (ROOT / "README.md").read_text(encoding="utf-8")
 for reference in re.findall(r'(?:src|srcset)="\./([^"]+)"', readme):
