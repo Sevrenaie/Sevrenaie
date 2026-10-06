@@ -6,27 +6,6 @@
   <samp>a little corner for code &amp; curiosity.</samp>
 </p>
 
-### On the Workbench
-
-**[Agent Platform](https://github.com/Sevrenaie/Agent_Platform)**
-
-A lightweight agent platform with visual workflows, a knowledge base, and AI-powered Q&amp;A.
-
-<a href="https://github.com/Sevrenaie/Agent_Platform">
-  <img src="./assets/agent-platform.png" width="100%" alt="Agent Platform: visual workflow editor, node connections, and execution interface." />
-</a>
-
-<p><sub>Visual workflows &nbsp;&middot;&nbsp; Document search &nbsp;&middot;&nbsp; Qwen-powered conversations</sub></p>
-
-### In the Toolbox
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/toolbox-dark.svg" />
-  <img src="./assets/toolbox-light.svg" width="300" height="48" alt="Vue 3, TypeScript, Vite, Pinia, NestJS, PostgreSQL" />
-</picture>
-
-<p><sub>Vue 3 &nbsp;/&nbsp; TypeScript &nbsp;/&nbsp; Vite &nbsp;/&nbsp; Pinia &nbsp;/&nbsp; NestJS &nbsp;/&nbsp; PostgreSQL</sub></p>
-
 ### A Little Company
 
 <picture>
