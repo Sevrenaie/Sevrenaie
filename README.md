@@ -3,7 +3,10 @@
 </p>
 
 <p align="center">
-  <samp>a little corner for code &amp; curiosity.</samp>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/greeting-dark.svg" />
+    <img src="./assets/greeting-light.svg" width="320" height="64" alt="hi i'm Sevrenaie" />
+  </picture>
 </p>
 
 ### A Little Company
