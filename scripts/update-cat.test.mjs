@@ -4,6 +4,8 @@ import { mkdtemp, readFile, rmdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getPublicData, prepareActivity, renderScenes, updateCat } from "./update-cat.mjs";
+import { buildSvg } from "./vendor/tomo/render.ts";
+import { VALID_STATES } from "./vendor/tomo/state.ts";
 
 const now = new Date("2026-10-06T08:00:00Z");
 const repo = { private: false, full_name: "Sevrenaie/Agent_Platform", owner: { login: "Sevrenaie" } };
@@ -73,18 +75,34 @@ test("HTTP and malformed-response failures leave existing artwork untouched", as
   }
 });
 
-test("both themes render bounded captions, attribution, and snapshot timestamps", () => {
-  const scenes = renderScenes({
-    state: "content", caption: "<not markup> " + "x".repeat(150),
-    hour: 16, updatedAt: "2026-10-06 08:00 UTC",
-  });
-  for (const [name, svg] of Object.entries(scenes)) {
-    const compact = name.includes("-mobile");
+test("all profile states hide messages and activity details in both themes and sizes", () => {
+  for (const state of VALID_STATES) {
+    const scenes = renderScenes({
+      state, caption: "quiet paws - no recent public pushes in the available feed",
+      hackingOn: "repo-label-must-not-appear",
+      hour: 16, updatedAt: "2026-10-06 08:00 UTC",
+    });
+    for (const [name, svg] of Object.entries(scenes)) {
+      const compact = name.includes("-mobile");
+      assert.match(svg, compact ? /viewBox="0 0 450 190"/ : /viewBox="0 0 894 190"/);
+      assert.match(svg, /<desc>A pale-blue pixel cat with a bowl, yarn, and a little home\.<\/desc>/);
+      if (!compact) assert.match(svg, /Tomo \/ prsdx/);
+      assert.doesNotMatch(svg, /one small step|quiet paws|no recent public pushes|last public push|repo-label-must-not-appear|a little break|hello, little visitor|a soft spot/);
+      assert.doesNotMatch(svg, /PUBLIC ACTIVITY|SNAPSHOT|2026-10-06 08:00 UTC/);
+      assert.doesNotMatch(svg, /scroll down|live stats|featured projects/);
+      assert.match(svg, /<animate/);
+    }
+  }
+});
+
+test("renderer defaults retain escaped captions for non-quiet consumers", () => {
+  for (const compact of [false, true]) {
+    const svg = buildSvg("content", "<not markup> " + "x".repeat(150), "light", "hello", "", true, {
+      compact, updatedAt: "2026-10-06 08:00 UTC",
+    });
     assert.match(svg, compact ? /viewBox="0 0 450 244"/ : /viewBox="0 0 894 222"/);
     assert.match(svg, /&lt;not markup&gt;/);
-    if (!compact) assert.match(svg, /Tomo \/ prsdx/);
-    assert.match(svg, compact ? /SNAPSHOT \/ 2026-10-06 08:00 UTC/ : /PUBLIC ACTIVITY \/ 2026-10-06 08:00 UTC/);
-    assert.doesNotMatch(svg, /scroll down|live stats|featured projects/);
-    assert.match(svg, /<animate/);
+    assert.doesNotMatch(svg, /<not markup>/);
+    assert.match(svg, /2026-10-06 08:00 UTC/);
   }
 });

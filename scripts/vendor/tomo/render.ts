@@ -361,11 +361,12 @@ export interface SceneOpts {
     labelExtra?: string[]; // extra " · "-joined caption-strip segments
     updatedAt?: string;   // UTC timestamp of this activity snapshot
     compact?: boolean;
+    quiet?: boolean;     // hide speech bubbles and public-activity labels
 }
 
 export function buildSvg(state: string, caption: string, palette = "dark", greeting = "hey! welcome to my corner", contact = "", attribution = true, opts: SceneOpts = {}): string {
     WIDTH = opts.compact ? 450 : 894;
-    HEIGHT = opts.compact ? 244 : 222;
+    HEIGHT = opts.quiet ? 190 : opts.compact ? 244 : 222;
     HOME_X = opts.compact ? 30 : 70;
     YARN_X = opts.compact ? 225 : 430;
     BOWL_X = opts.compact ? 360 : 640;
@@ -380,10 +381,13 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
     }
     if (state === "overheat") pal.body = "#ff7b72";
     const colors = { X: pal.body, p: pal.pink };
+    const description = opts.quiet
+        ? "A pale-blue pixel cat with a bowl, yarn, and a little home."
+        : `${caption}. Public activity snapshot${opts.updatedAt ? ` generated ${opts.updatedAt}` : ""}.`;
     const parts = [
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="github pet: ${esc(state)}">`,
-        `<title>Little company - ${esc(state)}</title>`,
-        `<desc>${esc(caption)}. Public activity snapshot${opts.updatedAt ? ` generated ${esc(opts.updatedAt)}` : ""}.</desc>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="${opts.quiet ? "Little company" : `github pet: ${esc(state)}`}">`,
+        `<title>${opts.quiet ? "Little company" : `Little company - ${esc(state)}`}</title>`,
+        `<desc>${esc(description)}</desc>`,
         `<rect width="${WIDTH}" height="${HEIGHT}" fill="${pal.bg}"/>`,
         ...sky(pal, skyPhase(opts.hour ?? 12), palette === "dark"),
         `<line x1="0" y1="${GROUND_Y}" x2="${WIDTH}" y2="${GROUND_Y}" stroke="${pal.ground}" stroke-width="2" stroke-dasharray="8 8"/>`,
@@ -404,20 +408,24 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
         const intro = state === "content" || state === "zoomies" || state === "release";
         parts.push(...props(pal, colors, state, dur, [0.66, 0.78], intro ? INTRO_S : 0));
         parts.push(...routineCat(state, pal, colors, shadesOn));
-        parts.push(...welcome(pal, greeting));
-        parts.push(...guideBubbles(pal, contact, opts.hackingOn ?? ""));
+        if (!opts.quiet) {
+            parts.push(...welcome(pal, greeting));
+            parts.push(...guideBubbles(pal, contact, opts.hackingOn ?? ""));
+        }
     }
     if (opts.confetti) parts.push(...confettiProp(pal));
-    const label = caption.length > 92 ? caption.slice(0, 89) + "..." : caption;
-    const lines: string[] = [];
-    if (opts.compact && label.length > 46) {
-        const at = label.lastIndexOf(" ", 46);
-        const split = at > 0 ? at : 46;
-        lines.push(label.slice(0, split), label.slice(split).trim().slice(0, 46));
-    } else lines.push(label);
-    lines.forEach((line, index) => parts.push(`<text x="16" y="${184 + index * 19}" font-family="monospace" font-size="14" fill="${pal.text}">${esc(line)}</text>`));
-    const detail = opts.updatedAt ? `${opts.compact ? "SNAPSHOT" : "PUBLIC ACTIVITY"} / ${opts.updatedAt}` : "PUBLIC ACTIVITY SNAPSHOT";
-    parts.push(`<text x="16" y="${HEIGHT - 15}" font-family="monospace" font-size="12" fill="${pal.text}">${esc(detail)}</text>`);
+    if (!opts.quiet) {
+        const label = caption.length > 92 ? caption.slice(0, 89) + "..." : caption;
+        const lines: string[] = [];
+        if (opts.compact && label.length > 46) {
+            const at = label.lastIndexOf(" ", 46);
+            const split = at > 0 ? at : 46;
+            lines.push(label.slice(0, split), label.slice(split).trim().slice(0, 46));
+        } else lines.push(label);
+        lines.forEach((line, index) => parts.push(`<text x="16" y="${184 + index * 19}" font-family="monospace" font-size="14" fill="${pal.text}">${esc(line)}</text>`));
+        const detail = opts.updatedAt ? `${opts.compact ? "SNAPSHOT" : "PUBLIC ACTIVITY"} / ${opts.updatedAt}` : "PUBLIC ACTIVITY SNAPSHOT";
+        parts.push(`<text x="16" y="${HEIGHT - 15}" font-family="monospace" font-size="12" fill="${pal.text}">${esc(detail)}</text>`);
+    }
     if (attribution && !opts.compact) parts.push(`<text x="${WIDTH - 16}" y="${HEIGHT - 15}" text-anchor="end" font-family="monospace" font-size="12" fill="${pal.text}">Tomo / prsdx</text>`);
     parts.push("</svg>");
     return parts.join("\n");

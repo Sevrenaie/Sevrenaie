@@ -1,8 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="894" height="222" viewBox="0 0 894 222" role="img" aria-label="github pet: content">
-<title>Little company - content</title>
-<desc>quiet paws - no recent public pushes in the available feed. Public activity snapshot generated 2026-10-06 11:08 UTC.</desc>
-<rect width="894" height="222" fill="#f3faff" />
-<rect width="894" height="158" fill="#e9b3c7" opacity="0.12" />
+<svg xmlns="http://www.w3.org/2000/svg" width="894" height="190" viewBox="0 0 894 190" role="img" aria-label="Little company">
+<title>Little company</title>
+<desc>A pale-blue pixel cat with a bowl, yarn, and a little home.</desc>
+<rect width="894" height="190" fill="#f3faff" />
+<rect width="894" height="158" fill="#0d1117" opacity="0.12" />
+<rect x="33" y="16" width="9" height="3" fill="#ad8625" />
+<rect x="30" y="19" width="12" height="3" fill="#ad8625" />
+<rect x="27" y="22" width="9" height="3" fill="#ad8625" />
+<rect x="27" y="25" width="9" height="3" fill="#ad8625" />
+<rect x="27" y="28" width="9" height="3" fill="#ad8625" />
+<rect x="30" y="31" width="12" height="3" fill="#ad8625" />
+<rect x="33" y="34" width="9" height="3" fill="#ad8625" />
+<rect x="120" y="72" width="3" height="3" fill="#7a9bad" />
+<rect x="260" y="88" width="3" height="3" fill="#7a9bad" />
+<rect x="400" y="70" width="3" height="3" fill="#7a9bad" />
+<rect x="520" y="86" width="3" height="3" fill="#7a9bad" />
+<rect x="700" y="72" width="3" height="3" fill="#7a9bad" />
+<rect x="820" y="90" width="3" height="3" fill="#7a9bad" />
 <line x1="0" y1="158" x2="894" y2="158" stroke="#c7dfe9" stroke-width="2" stroke-dasharray="8 8" />
 <rect x="54" y="118" width="80" height="40" fill="none" stroke="#c7dfe9" stroke-width="2" />
 <line x1="54" y1="118" x2="94" y2="106" stroke="#c7dfe9" stroke-width="2" />
@@ -72,14 +85,5 @@
 <g opacity="0"><rect x="87" y="-12" width="3" height="3" fill="#d88baa" /><rect x="93" y="-12" width="3" height="3" fill="#d88baa" /><rect x="84" y="-9" width="15" height="3" fill="#d88baa" /><rect x="84" y="-6" width="15" height="3" fill="#d88baa" /><rect x="87" y="-3" width="9" height="3" fill="#d88baa" /><rect x="90" y="0" width="3" height="3" fill="#d88baa" /></g>
 <g opacity="0"><rect x="105" y="-24" width="3" height="3" fill="#d88baa" /><rect x="111" y="-24" width="3" height="3" fill="#d88baa" /><rect x="102" y="-21" width="15" height="3" fill="#d88baa" /><rect x="102" y="-18" width="15" height="3" fill="#d88baa" /><rect x="105" y="-15" width="9" height="3" fill="#d88baa" /><rect x="108" y="-12" width="3" height="3" fill="#d88baa" /></g>
 </g></g>
-<g opacity="0"><rect x="60" y="12" width="380" height="46" rx="8" fill="#c7dfe9" />
-<polygon points="110,58 130,58 118,74" fill="#c7dfe9" />
-<text x="76" y="31" font-family="monospace" font-size="14" fill="#436176">hello, little visitor</text>
-<text x="76" y="48" font-family="monospace" font-size="13" fill="#436176">a soft spot for small discoveries</text>
-</g>
-<g opacity="0"><rect x="652" y="14" width="226" height="30" rx="8" fill="#c7dfe9" /><polygon points="678,44 696,44 685,54" fill="#c7dfe9" /><text x="663" y="33" font-family="monospace" font-size="14" fill="#436176">one small step at a time</text></g>
-<g opacity="0"><rect x="609.5" y="14" width="268.5" height="30" rx="8" fill="#c7dfe9" /><polygon points="635.5,44 653.5,44 642.5,54" fill="#c7dfe9" /><text x="620.5" y="33" font-family="monospace" font-size="14" fill="#436176">a little break, a little yarn</text></g>
-<text x="16" y="184" font-family="monospace" font-size="14" fill="#436176">quiet paws - no recent public pushes in the available feed</text>
-<text x="16" y="207" font-family="monospace" font-size="12" fill="#436176">PUBLIC ACTIVITY / 2026-10-06 11:08 UTC</text>
-<text x="878" y="207" text-anchor="end" font-family="monospace" font-size="12" fill="#436176">Tomo / prsdx</text>
+<text x="878" y="175" text-anchor="end" font-family="monospace" font-size="12" fill="#436176">Tomo / prsdx</text>
 </svg>

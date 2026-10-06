@@ -15,11 +15,13 @@ for asset in (ROOT / "assets").glob("*.svg"):
         assert not any(node.tag.rsplit("}", 1)[-1].startswith("animate") for node in root.iter()), asset
         assert not root.findall(".//" + SVG + "set"), asset
     if asset.name.startswith("cat-"):
-        assert root.attrib["viewBox"] == ("0 0 450 244" if "-mobile" in asset.name else "0 0 894 222"), asset
+        assert root.attrib["viewBox"] == ("0 0 450 190" if "-mobile" in asset.name else "0 0 894 190"), asset
         assert root.find(SVG + "desc") is not None, asset
-        for text in root.findall("./" + SVG + "text"):
-            if text.attrib.get("y") in ("184", "203"):
-                assert len(text.text or "") <= (46 if "-mobile" in asset.name else 92), asset
+        copy = " ".join(root.itertext())
+        for removed in ("one small step", "quiet paws", "no recent public pushes",
+                        "last public push", "PUBLIC ACTIVITY", "SNAPSHOT",
+                        "hello, little visitor", "a soft spot", "a little break"):
+            assert removed not in copy, (asset, removed)
 
 readme = (ROOT / "README.md").read_text(encoding="utf-8")
 for reference in re.findall(r'(?:src|srcset)="\./([^"]+)"', readme):

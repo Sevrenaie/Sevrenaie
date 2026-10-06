@@ -59,7 +59,7 @@ export function renderScenes(activity) {
   return Object.fromEntries(["light", "dark"].flatMap(theme =>
     [false, true].map(compact => [
       `cat-${theme}${compact ? "-mobile" : ""}.svg`,
-      buildSvg(activity.state, activity.caption, theme, "hello, little visitor", "", true, { ...activity, compact }),
+      buildSvg(activity.state, activity.caption, theme, "", "", true, { ...activity, compact, quiet: true }),
     ])
   ));
 }
