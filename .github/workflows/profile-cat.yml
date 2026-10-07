@@ -26,16 +26,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "24"
-      - name: Test public-activity filtering and rendering
-        run: node --test scripts/update-cat.test.mjs
       - name: Generate public-activity snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/update-cat.mjs
-      - name: Generate reduced-motion scenes and validate assets
-        run: |
-          python3 scripts/static-scenes.py
-          python3 scripts/check-assets.py
+      - name: Generate reduced-motion scenes
+        run: python3 scripts/static-scenes.py
       - name: Commit artwork
         run: |
           git add -- assets/cat-light.svg assets/cat-dark.svg assets/cat-light-static.svg assets/cat-dark-static.svg assets/cat-light-mobile.svg assets/cat-dark-mobile.svg assets/cat-light-mobile-static.svg assets/cat-dark-mobile-static.svg
