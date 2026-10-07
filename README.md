@@ -30,4 +30,4 @@
   <img src="./assets/paw-trail.svg" width="200" height="40" alt="" />
 </p>
 
-<p align="center"><sub><a href="./CREDITS.md">Made with a little help from open source</a></sub></p>
+<p align="center"><sub>Enjoy the little things. Build something you love.</sub></p>
