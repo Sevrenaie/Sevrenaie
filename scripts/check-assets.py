@@ -36,6 +36,19 @@ for asset in (ROOT / "assets").glob("*.svg"):
             assert reminder is None and hearts is not None, asset
         for role in ("play-yarn", "play-paw", "play-hop", "eye-gaze", "soft-face"):
             assert root.find(f".//{SVG}g[@data-role='{role}']") is not None, (asset, role)
+        paw = root.find(f".//{SVG}g[@data-role='play-paw']")
+        assert paw.attrib.get("transform") == "translate(0 0)" and "opacity" not in paw.attrib, asset
+        rectangles = paw.findall(SVG + "rect")
+        assert len(rectangles) == 1, asset
+        assert {key: rectangles[0].attrib[key] for key in ("x", "y", "width", "height")} == {
+            "x": "84", "y": "146", "width": "18", "height": "12",
+        }, asset
+        assert all(child.tag in (SVG + "rect", SVG + "animateTransform") for child in paw), asset
+        for motion in paw.findall(SVG + "animateTransform"):
+            assert motion.attrib["type"] == "translate" and motion.attrib["calcMode"] == "spline", asset
+            offsets = [tuple(map(float, value.split())) for value in motion.attrib["values"].split(";")]
+            assert offsets[0] == offsets[-1] == (0, 0), asset
+            assert all(0 <= x <= 12 and -6 <= y <= 0 for x, y in offsets), asset
         face = root.find(f".//{SVG}g[@data-role='soft-face']")
         assert not face.findall(f".//{SVG}animate[@attributeName='opacity']"), asset
         for role in ("eye-left", "eye-right", "face-nose", "face-mouth"):

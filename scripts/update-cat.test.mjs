@@ -226,6 +226,66 @@ test("the same activity snapshot uses one play plan across themes and sizes", ()
   assert.equal(patterns.size, 1);
 });
 
+test("yarn play lifts the original block paw without growing, fading or duplicating a limb", () => {
+  for (const hungry of [true, false]) {
+    for (const svg of Object.values(renderScenes({
+      state: hungry ? "hungry" : "content", caption: "", hour: 12,
+      feeding: { level: hungry ? 0 : 25, hungry },
+    }))) {
+      assert.equal(svg.match(/data-role="play-paw"/g).length, 1);
+      const paw = svg.match(/<g data-role="play-paw"([^>]*)>(.*?)<\/g>/s);
+      assert.match(paw[1], /transform="translate\(0 0\)"/);
+      assert.match(paw[1], /shape-rendering="crispEdges"/);
+      assert.doesNotMatch(paw[0], /opacity|<path|<ellipse|<circle|scale|rotate/);
+      assert.equal(paw[2].match(/<rect /g).length, 1);
+      assert.match(paw[2], /<rect x="84" y="146" width="18" height="12" fill="#[a-f0-9]+"\/>/);
+      const motion = paw[2].match(/<animateTransform[^>]+\/>/)[0];
+      assert.match(motion, /type="translate"/);
+      assert.match(motion, /calcMode="spline"/);
+      const offsets = motion.match(/values="([^"]+)"/)[1].split(";").map(value => value.split(" ").map(Number));
+      assert.deepEqual(offsets[0], [0, 0]);
+      assert.deepEqual(offsets.at(-1), [0, 0]);
+      assert.ok(offsets.some(([x, y]) => x === 12 && y === -6));
+      assert.ok(offsets.every(([x, y]) => x >= 0 && x <= 12 && y >= -6 && y <= 0));
+      // Even the fully raised paw overlaps the solid body, so it cannot detach.
+      assert.ok(offsets.every(([x, y]) => 84 + x < 108 && 146 + y < 152 && 158 + y > 80));
+      const silhouette = svg.slice(svg.indexOf('data-role="cat-silhouette"'), svg.indexOf('data-role="soft-face"'));
+      assert.doesNotMatch(silhouette, /<rect x="84" y="152" width="18" height="6"/);
+      assert.doesNotMatch(svg, /M96 136 Q113 143 130 142/);
+    }
+  }
+});
+
+test("short paws reach the yarn while the body follows every tug at a fixed distance", () => {
+  for (const seed of [1, 2, 3, 44, 12345]) {
+    for (const hungry of [true, false]) {
+      const plan = makePlayPlan(seed, hungry);
+      for (const [name, svg] of Object.entries(renderScenes({
+        state: hungry ? "hungry" : "content", caption: "", hour: 12, playSeed: seed,
+        feeding: { level: hungry ? 0 : 25, hungry },
+      }))) {
+        const yarnX = name.includes("-mobile") ? 195 : 430;
+        const motion = svg.match(/data-role="cat-position"[^>]*>\s*(<animateTransform[^>]+\/>)/)[1];
+        const times = motion.match(/keyTimes="([^"]+)"/)[1].split(";").map(value => Number(value) * PLAY_LOOP_SECONDS);
+        const xs = motion.match(/values="([^"]+)"/)[1].split(";").map(value => Number(value.split(" ")[0]));
+        const at = seconds => {
+          const index = times.findIndex(time => Math.abs(time - seconds) < 0.0001);
+          assert.notEqual(index, -1, `Missing body key at ${seconds}s`);
+          return xs[index];
+        };
+        const perch = at(22);
+        assert.equal(perch + 84 + 18 + 12, yarnX, "The short raised paw reaches the yarn");
+        const tug = plan.find(beat => beat.action === "tug");
+        assert.equal(at(tug.at), perch);
+        assert.equal(at(tug.at + 0.8), perch - tug.distance);
+        assert.equal(at(tug.at + 1.8), perch - tug.distance);
+        assert.equal(at(tug.at + 3), perch);
+        assert.equal(at(tug.at + 4), perch);
+      }
+    }
+  }
+});
+
 test("one soft face morphs smoothly, blinks, and only pouts briefly near the bowl", () => {
   const track = (svg, role) => {
     const match = svg.match(new RegExp(`<(?:g|path) data-role="${role}"([^>]*)>\\s*(<animate(?:Transform)?[^>]+/>)`));

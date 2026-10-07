@@ -405,7 +405,7 @@ function gentleFace(pal: Pal, hungry: boolean): string {
 
 function playTracks(seed: number, hungry: boolean) {
     const plan = makePlayPlan(seed, hungry);
-    const perch = YARN_X - 132;
+    const perch = YARN_X - 114;
     const home = hungry ? CAT_AT_BOWL : HOME_X;
     const cat: SceneKey[] = [[0, home], [3, home], [7, CAT_AT_BOWL], [18, CAT_AT_BOWL], [22, perch]];
     const ball: SceneKey[] = [[0, 0]];
@@ -422,6 +422,9 @@ function playTracks(seed: number, hungry: boolean) {
         } else {
             const direction = action === "tug" ? -1 : 1;
             ball.push([t, 0], [t + 0.8, direction * d], [t + 1.8, direction * d], [t + 3, 0], [t + 4, 0]);
+            if (action === "tug") {
+                cat.push([t, perch], [t + 0.8, perch - d], [t + 1.8, perch - d], [t + 3, perch], [t + 4, perch]);
+            }
             paw.push([t - 0.2, 0], [t, 1], [t + 2.8, 1], [t + 3.2, 0]);
             thread.push([t - 0.2, 0], [t, 1], [t + 2.8, 1], [t + 3.2, 0]);
         }
@@ -433,7 +436,7 @@ function playTracks(seed: number, hungry: boolean) {
         cat: sceneAnimation("transform", translate(cat), "translate", true),
         ball: sceneAnimation("transform", translate(ball), "translate", true),
         roll: sceneAnimation("transform", ball.map(([t, x]) => [t, `${Number(x) * 3} 18 140`]), "rotate", true),
-        paw: sceneAnimation("opacity", paw),
+        paw: sceneAnimation("transform", paw.map(([t, amount]) => [t, `${Number(amount) * 12} ${Number(amount) * -6}`]), "translate", true),
         hop: sceneAnimation("transform", translate(hop, true), "translate", true),
         thread: sceneAnimation("opacity", thread),
     };
@@ -499,7 +502,9 @@ function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean 
     if (!hungry) parts.push(sceneAnimation("transform", [[0, "0 0"], [7.68, "0 0"], [8.96, "0 2"], [9.92, "0 0"], [11.2, "0 2"], [12.16, "0 0"]], "translate"));
     // Keep adjacent sprite rows solid at fractional animation positions.
     parts.push(`<g data-role="cat-silhouette" shape-rendering="crispEdges">`);
-    parts.push(...rects(sprites.SIT_FRONT, { X: pal.body, p: pal.body, o: pal.body }, 0, CAT_Y));
+    // Move the original right foot, leaving no duplicate foot on the ground.
+    const body = sprites.SIT_FRONT.map((row, index) => index === 15 ? row.slice(0, 14) + "..." + row.slice(17) : row);
+    parts.push(...rects(body, { X: pal.body, p: pal.body, o: pal.body }, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_INNER_EARS, pal.pink, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_WHISKERS, pal.body, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_COLLAR_BAND, pal.collar, 0, CAT_Y));
@@ -513,9 +518,8 @@ function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean 
             `<path d="M88 126 Q76 123 74 116" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
             `<circle cx="74" cy="116" r="5" fill="${pal.body}"/></g>`);
     }
-    parts.push(`<g data-role="play-paw" opacity="0">${play.paw}` +
-        `<path d="M96 136 Q113 143 130 142" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
-        `<ellipse cx="132" cy="142" rx="6" ry="5" fill="${pal.body}"/></g>`);
+    parts.push(`<g data-role="play-paw" transform="translate(0 0)" shape-rendering="crispEdges">${play.paw}` +
+        `<rect x="84" y="146" width="18" height="12" fill="${pal.body}"/></g>`);
     parts.push("</g></g>");
     if (!hungry) parts.push(feedingHearts(pal));
     parts.push("</g>", mealBowl(pal, level));

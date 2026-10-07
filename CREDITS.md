@@ -26,6 +26,11 @@ and screen sizes. A hungry cat still plays, but more gently, and returns to
 the bowl for its reminder. This is pre-rendered SVG animation, not per-visitor
 randomness or pointer interaction. Reduced-motion artwork remains still.
 
+The yarn-playing paw is the original rectangular front foot, not an extra
+curved arm. It keeps its size and moves at most 12 pixels sideways and
+6 pixels upward. The cat sits close to the yarn and scoots with it while
+tugging, so its paw stays connected without stretching.
+
 The resting face has round eyes, a tiny nose, and a small smile. Single eye
 and mouth paths morph continuously instead of crossfading overlapping faces.
 Glances travel at most 1.5 pixels; occasional blinks take 300 milliseconds.
