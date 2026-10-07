@@ -26,6 +26,13 @@ and screen sizes. A hungry cat still plays, but more gently, and returns to
 the bowl for its reminder. This is pre-rendered SVG animation, not per-visitor
 randomness or pointer interaction. Reduced-motion artwork remains still.
 
+The resting face has round eyes, a tiny nose, and a small smile. Single eye
+and mouth paths morph continuously instead of crossfading overlapping faces.
+Glances travel at most 1.5 pixels; occasional blinks take 300 milliseconds.
+Even when food is low, a slight pout appears for only about four seconds per
+80-second loop, while asking near the bowl. The cat otherwise smiles,
+including in the reduced-motion artwork.
+
 The workflow runs on a six-hour schedule and can be run manually. GitHub may
 delay scheduled runs. The bowl is a snapshot from the available public feed,
 not a live measure of all work. Its level falls on subsequent scheduled

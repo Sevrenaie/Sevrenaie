@@ -347,18 +347,6 @@ function routineCat(state: string, pal: Pal, colors: Record<string, string>, wee
     return cat;
 }
 
-function gentleFace(pal: Pal, happy: boolean, hungry: boolean): string {
-    const eyes = happy
-        ? "M27 98 L33 92 L39 98 M78 98 L84 92 L90 98"
-        : hungry
-            ? "M27 94 Q33 99 39 96 M78 96 Q84 99 90 94"
-            : "M33 93 L33 97 M84 93 L84 97";
-    const mouth = hungry ? "M53 114 Q59 109 65 114"
-        : "M48 109 Q48 117 54 115 Q60 114 60 109 Q60 117 66 115 Q72 114 72 109";
-    return `<g data-face="${happy ? "happy" : hungry ? "hungry" : "calm"}" fill="none" stroke="${pal.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">` +
-        `<path d="${eyes}"/><path d="${mouth}"/></g>`;
-}
-
 type SceneKey = [number, number | string];
 
 function sceneAnimation(attribute: string, frames: SceneKey[], transform = "", smooth = false): string {
@@ -368,6 +356,51 @@ function sceneAnimation(attribute: string, frames: SceneKey[], transform = "", s
     if (keys.at(-1)![0] < PLAY_LOOP_SECONDS) keys.push([PLAY_LOOP_SECONDS, keys.at(-1)![1]]);
     const easing = smooth ? ` calcMode="spline" keySplines="${Array(keys.length - 1).fill("0.4 0 0.2 1").join(";")}"` : "";
     return `<${tag} attributeName="${attribute}"${transform ? ` type="${transform}"` : ""} values="${keys.map(key => key[1]).join(";")}" keyTimes="${keys.map(key => (key[0] / PLAY_LOOP_SECONDS).toFixed(6)).join(";")}" dur="${PLAY_LOOP_SECONDS}s" repeatCount="indefinite"${easing}/>`;
+}
+
+function gentleFace(pal: Pal, hungry: boolean): string {
+    // Morph the same three paths; stacked faces produce ghosted eyes and mouths.
+    const moods: SceneKey[] = hungry ? [
+        [0, "calm"], [4.8, "calm"], [5.4, "hungry"], [6.4, "hungry"], [7, "calm"],
+        [13, "calm"], [13.6, "happy"], [15.2, "happy"], [15.8, "calm"],
+        [60, "calm"], [60.6, "happy"], [62.2, "happy"], [62.8, "calm"],
+        [75, "calm"], [75.6, "hungry"], [76.4, "hungry"], [77, "calm"],
+    ] : [
+        [0, "calm"], [7.68, "calm"], [8.32, "happy"], [17.6, "happy"], [18.56, "calm"],
+    ];
+    const eyelids = [...moods];
+    for (const at of [2.4, 10.8, 16.3, 23.2, 30.7, 37.1, 43.8, 50.4, 57.8, 64.1, 70.6, 78.4]) {
+        const previous = moods.filter(([t]) => t <= at).at(-1);
+        const next = moods.find(([t]) => t > at);
+        if (previous?.[1] !== "calm" || (next && next[0] < at + 0.3)) continue;
+        eyelids.push([at, "calm"], [at + 0.1, "blink"], [at + 0.16, "blink"], [at + 0.3, "calm"]);
+    }
+    eyelids.sort((a, b) => a[0] - b[0]);
+    const gaze: SceneKey[] = [
+        [0, "0 0"], [1.1, "0 0"], [1.7, "1.5 -0.5"], [2.3, "1.5 -0.5"], [2.9, "0 0"],
+        [11.8, "0 0"], [12.4, "-1.5 -0.5"], [12.8, "-1.5 -0.5"], [13.4, "0 0"],
+        [24, "0 0"], [24.6, "1.5 0"], [32.4, "1.5 0"], [33, "0 0"],
+        [38, "0 0"], [38.6, "1.5 0"], [46, "1.5 0"], [46.6, "0 0"],
+        [52, "0 0"], [52.6, "1.5 0"], [59, "1.5 0"], [59.6, "0 0"],
+        [68, "0 0"], [68.6, "-1.5 0"], [69.5, "-1.5 0"], [70.1, "0 0"],
+    ];
+    const eye = (x: number, mood: number | string) => mood === "happy"
+        ? `M${x - 4} 97 Q${x} 89 ${x + 4} 97 Q${x} 94 ${x - 4} 97 Z`
+        : mood === "blink"
+            ? `M${x - 3} 96 Q${x} 95.6 ${x + 3} 96 Q${x} 96.4 ${x - 3} 96 Z`
+            : `M${x - 3} 96 Q${x} 89 ${x + 3} 96 Q${x} 103 ${x - 3} 96 Z`;
+    const mouths: Record<string, string> = {
+        calm: "M54 110 Q57 114 60 110 Q63 114 66 110",
+        happy: "M54 110 Q57 115 60 110 Q63 115 66 110",
+        hungry: "M54 112 Q57 110 60 111 Q63 110 66 112",
+    };
+    return `<g data-role="soft-face">` +
+        `<g data-role="eye-gaze" transform="translate(0 0)">${sceneAnimation("transform", gaze, "translate", true)}` +
+        [38, 82].map((x, index) => `<path data-role="eye-${index ? "right" : "left"}" d="${eye(x, "calm")}" fill="${pal.accent}">` +
+            sceneAnimation("d", eyelids.map(([t, mood]) => [t, eye(x, mood)]), "", true) + "</path>").join("") +
+        `</g><path data-role="face-nose" d="M57.5 104 L62.5 104 Q62 106 60 107 Q58 106 57.5 104 Z" fill="${pal.pink}"/>` +
+        `<path data-role="face-mouth" d="${mouths.calm}" fill="none" stroke="${pal.accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
+        sceneAnimation("d", moods.map(([t, mood]) => [t, mouths[mood]]), "", true) + "</path></g>";
 }
 
 function playTracks(seed: number, hungry: boolean) {
@@ -466,7 +499,7 @@ function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean 
     if (!hungry) parts.push(sceneAnimation("transform", [[0, "0 0"], [7.68, "0 0"], [8.96, "0 2"], [9.92, "0 0"], [11.2, "0 2"], [12.16, "0 0"]], "translate"));
     // Keep adjacent sprite rows solid at fractional animation positions.
     parts.push(`<g data-role="cat-silhouette" shape-rendering="crispEdges">`);
-    parts.push(...rects(sprites.SIT_FRONT, { X: pal.body, p: pal.pink, o: pal.body }, 0, CAT_Y));
+    parts.push(...rects(sprites.SIT_FRONT, { X: pal.body, p: pal.body, o: pal.body }, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_INNER_EARS, pal.pink, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_WHISKERS, pal.body, 0, CAT_Y));
     parts.push(...pixels(sprites.SIT_COLLAR_BAND, pal.collar, 0, CAT_Y));
@@ -474,12 +507,8 @@ function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean 
     parts.push(...tailWag(pal, CAT_Y, hungry ? "4s" : "2.8s"));
     parts.push("</g>");
     parts.push(`<rect x="22" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/><rect x="85" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/>`);
-    if (hungry) {
-        parts.push(`<g opacity="1">${sceneAnimation("opacity", [[0, 1], [21, 1], [22, 0], [65, 0], [68, 1]])}${gentleFace(pal, false, true)}</g>`);
-        parts.push(`<g opacity="0">${sceneAnimation("opacity", [[0, 0], [21, 0], [22, 1], [65, 1], [68, 0]])}${gentleFace(pal, false, false)}</g>`);
-    } else {
-        parts.push(`<g opacity="0">${sceneAnimation("opacity", [[0, 1], [7.68, 1], [8.32, 0], [17.6, 0], [18.56, 1]])}${gentleFace(pal, false, false)}</g>`);
-        parts.push(`<g opacity="1">${sceneAnimation("opacity", [[0, 0], [7.68, 0], [8.32, 1], [17.6, 1], [18.56, 0]])}${gentleFace(pal, true, false)}</g>`);
+    parts.push(gentleFace(pal, hungry));
+    if (!hungry) {
         parts.push(`<g data-role="snack-paw" opacity="0">${sceneAnimation("opacity", [[0, 0], [7.68, 0], [8.32, 1], [11.52, 1], [12.48, 0]])}` +
             `<path d="M88 126 Q76 123 74 116" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
             `<circle cx="74" cy="116" r="5" fill="${pal.body}"/></g>`);

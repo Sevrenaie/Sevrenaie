@@ -175,10 +175,10 @@ test("profile feeding uses gentle faces, meal hearts and only low-food reminders
       if (hungry) {
         assert.match(svg, /data-role="hungry-reminder"/);
         assert.ok(svg.includes(level ? "Running low..." : "A little snack?"));
-        assert.match(svg, /data-face="hungry"/);
+        assert.match(svg, /data-role="soft-face"/);
         assert.doesNotMatch(svg, /data-role="meal-hearts"|data-role="little-bite"/);
       } else {
-        assert.match(svg, /data-face="happy"/);
+        assert.match(svg, /data-role="face-mouth"/);
         assert.match(svg, /data-role="meal-hearts"/);
         assert.match(svg, /data-role="little-bite"/);
         assert.doesNotMatch(svg, /data-role="hungry-reminder"/);
@@ -224,4 +224,63 @@ test("the same activity snapshot uses one play plan across themes and sizes", ()
     assert.match(position, /dur="80s"/);
   }
   assert.equal(patterns.size, 1);
+});
+
+test("one soft face morphs smoothly, blinks, and only pouts briefly near the bowl", () => {
+  const track = (svg, role) => {
+    const match = svg.match(new RegExp(`<(?:g|path) data-role="${role}"([^>]*)>\\s*(<animate(?:Transform)?[^>]+/>)`));
+    const tag = match?.[2];
+    assert.ok(tag, `Missing animation for ${role}`);
+    return {
+      attributes: match[1],
+      tag,
+      times: tag.match(/keyTimes="([^"]+)"/)[1].split(";").map(t => Number(t) * PLAY_LOOP_SECONDS),
+      values: tag.match(/values="([^"]+)"/)[1].split(";"),
+    };
+  };
+  for (const hungry of [true, false]) {
+    for (const svg of Object.values(renderScenes({
+      state: hungry ? "hungry" : "content", caption: "", hour: 12,
+      feeding: { level: hungry ? 0 : 25, hungry },
+    }))) {
+      assert.equal(svg.match(/data-role="soft-face"/g).length, 1);
+      assert.doesNotMatch(svg, /data-face=|data-role="face-(calm|happy|hungry)"/);
+      const mouth = track(svg, "face-mouth");
+      for (const role of ["eye-left", "eye-right", "face-mouth"]) {
+        assert.equal(svg.match(new RegExp(`data-role="${role}"`, "g")).length, 1);
+        const part = track(svg, role);
+        const base = part.attributes.match(/d="([^"]+)"/)[1];
+        assert.equal(part.values[0], base);
+        assert.equal(part.values.at(-1), base);
+        assert.match(part.tag, /attributeName="d"/);
+        assert.match(part.tag, /calcMode="spline"/);
+        for (const value of part.values) {
+          assert.deepEqual(value.match(/[A-Za-z]/g), base.match(/[A-Za-z]/g));
+          assert.equal(value.match(/-?\d+(?:\.\d+)?/g).length, base.match(/-?\d+(?:\.\d+)?/g).length);
+        }
+      }
+      const gaze = track(svg, "eye-gaze");
+      const offsets = gaze.values.map(value => value.split(" ").map(Number));
+      assert.deepEqual(offsets[0], [0, 0]);
+      assert.deepEqual(offsets.at(-1), [0, 0]);
+      assert.ok(offsets.some(([x]) => x < 0) && offsets.some(([x]) => x > 0));
+      assert.ok(offsets.every(([x, y]) => Math.abs(x) <= 1.5 && Math.abs(y) <= 0.5));
+      const eyes = track(svg, "eye-left");
+      const blink = eyes.values.map((value, i) => value.includes("95.6") ? i : -1).filter(i => i >= 0);
+      assert.ok(blink.length >= 16);
+      for (let i = 0; i < blink.length; i += 2) {
+        assert.ok(Math.abs(eyes.times[blink[i + 1] + 1] - eyes.times[blink[i] - 1] - 0.3) < 1e-6);
+      }
+      const pout = "M54 112 Q57 110 60 111 Q63 110 66 112";
+      let poutSeconds = 0;
+      for (let i = 0; i < mouth.times.length - 1; i++) {
+        if (mouth.values[i] === pout || mouth.values[i + 1] === pout) {
+          const start = mouth.times[i], end = mouth.times[i + 1];
+          poutSeconds += end - start;
+          assert.ok((start >= 4 && end <= 10) || (start >= 74 && end <= 78));
+        }
+      }
+      assert.ok(hungry ? poutSeconds > 3 && poutSeconds < 5 : poutSeconds === 0);
+    }
+  }
 });

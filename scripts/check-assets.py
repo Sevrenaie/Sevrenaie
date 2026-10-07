@@ -34,8 +34,23 @@ for asset in (ROOT / "assets").glob("*.svg"):
             assert "".join(reminder.itertext()) == ("Running low..." if level else "A little snack?"), asset
         else:
             assert reminder is None and hearts is not None, asset
-        for role in ("play-yarn", "play-paw", "play-hop"):
+        for role in ("play-yarn", "play-paw", "play-hop", "eye-gaze", "soft-face"):
             assert root.find(f".//{SVG}g[@data-role='{role}']") is not None, (asset, role)
+        face = root.find(f".//{SVG}g[@data-role='soft-face']")
+        assert not face.findall(f".//{SVG}animate[@attributeName='opacity']"), asset
+        for role in ("eye-left", "eye-right", "face-nose", "face-mouth"):
+            assert len(face.findall(f".//{SVG}path[@data-role='{role}']")) == 1, (asset, role)
+        mouth = face.find(f".//{SVG}path[@data-role='face-mouth']")
+        assert mouth.attrib["d"] == "M54 110 Q57 114 60 110 Q63 114 66 110", asset
+        for path in face.findall(f".//{SVG}path"):
+            for animation in path.findall(f"{SVG}animate[@attributeName='d']"):
+                base = path.attrib["d"]
+                commands = re.findall(r"[A-Za-z]", base)
+                numbers = re.findall(r"-?\d+(?:\.\d+)?", base)
+                for value in animation.attrib["values"].split(";"):
+                    assert re.findall(r"[A-Za-z]", value) == commands, (asset, path.attrib["data-role"])
+                    assert len(re.findall(r"-?\d+(?:\.\d+)?", value)) == len(numbers), asset
+                assert animation.attrib["calcMode"] == "spline", asset
         for node in root.iter():
             if "keyTimes" in node.attrib:
                 times = [float(value) for value in node.attrib["keyTimes"].split(";")]
