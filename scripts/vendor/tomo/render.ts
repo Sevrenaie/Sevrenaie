@@ -10,6 +10,7 @@
 
 import * as sprites from "./sprites.ts";
 import { skyPhase } from "./state.ts";
+import { makePlayPlan, PLAY_LOOP_SECONDS } from "../../playtime.mjs";
 
 const PX = 6;
 let WIDTH = 894, HEIGHT = 222;
@@ -358,9 +359,56 @@ function gentleFace(pal: Pal, happy: boolean, hungry: boolean): string {
         `<path d="${eyes}"/><path d="${mouth}"/></g>`;
 }
 
+type SceneKey = [number, number | string];
+
+function sceneAnimation(attribute: string, frames: SceneKey[], transform = "", smooth = false): string {
+    const tag = transform ? "animateTransform" : "animate";
+    const keys = [...frames];
+    if (keys[0][0] > 0) keys.unshift([0, keys[0][1]]);
+    if (keys.at(-1)![0] < PLAY_LOOP_SECONDS) keys.push([PLAY_LOOP_SECONDS, keys.at(-1)![1]]);
+    const easing = smooth ? ` calcMode="spline" keySplines="${Array(keys.length - 1).fill("0.4 0 0.2 1").join(";")}"` : "";
+    return `<${tag} attributeName="${attribute}"${transform ? ` type="${transform}"` : ""} values="${keys.map(key => key[1]).join(";")}" keyTimes="${keys.map(key => (key[0] / PLAY_LOOP_SECONDS).toFixed(6)).join(";")}" dur="${PLAY_LOOP_SECONDS}s" repeatCount="indefinite"${easing}/>`;
+}
+
+function playTracks(seed: number, hungry: boolean) {
+    const plan = makePlayPlan(seed, hungry);
+    const perch = YARN_X - 132;
+    const home = hungry ? CAT_AT_BOWL : HOME_X;
+    const cat: SceneKey[] = [[0, home], [3, home], [7, CAT_AT_BOWL], [18, CAT_AT_BOWL], [22, perch]];
+    const ball: SceneKey[] = [[0, 0]];
+    const paw: SceneKey[] = [[0, 0]];
+    const hop: SceneKey[] = [[0, 0]];
+    const thread: SceneKey[] = [[0, 0]];
+    for (const { action, at: t, distance: d } of plan) {
+        if (action === "chase") {
+            ball.push([t, 0], [t + 1, d], [t + 3, d], [t + 5, 0], [t + 6, 0]);
+            cat.push([t, perch], [t + 0.7, perch], [t + 2, perch + d], [t + 3, perch + d], [t + 5, perch], [t + 6, perch]);
+            paw.push([t - 0.2, 0], [t, 1], [t + 0.5, 1], [t + 0.8, 0], [t + 2.5, 0], [t + 2.8, 1], [t + 5, 1], [t + 5.3, 0]);
+            hop.push([t + 0.7, 0], [t + 1.1, hungry ? -1 : -3], [t + 1.6, 0]);
+            thread.push([t + 2.5, 0], [t + 2.8, 1], [t + 5, 1], [t + 5.3, 0]);
+        } else {
+            const direction = action === "tug" ? -1 : 1;
+            ball.push([t, 0], [t + 0.8, direction * d], [t + 1.8, direction * d], [t + 3, 0], [t + 4, 0]);
+            paw.push([t - 0.2, 0], [t, 1], [t + 2.8, 1], [t + 3.2, 0]);
+            thread.push([t - 0.2, 0], [t, 1], [t + 2.8, 1], [t + 3.2, 0]);
+        }
+    }
+    cat.push([65, perch], [72, home], [PLAY_LOOP_SECONDS, home]);
+    const translate = (keys: SceneKey[], vertical = false): SceneKey[] => keys.map(([t, n]) => [t, vertical ? `0 ${n}` : `${n} 0`]);
+    return {
+        actions: plan.map(beat => beat.action).join(","),
+        cat: sceneAnimation("transform", translate(cat), "translate", true),
+        ball: sceneAnimation("transform", translate(ball), "translate", true),
+        roll: sceneAnimation("transform", ball.map(([t, x]) => [t, `${Number(x) * 3} 18 140`]), "rotate", true),
+        paw: sceneAnimation("opacity", paw),
+        hop: sceneAnimation("transform", translate(hop, true), "translate", true),
+        thread: sceneAnimation("opacity", thread),
+    };
+}
+
 function feedingHearts(pal: Pal): string {
     return `<g data-role="meal-hearts" opacity="1">` +
-        `<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.32;0.36;0.52;0.57;1" dur="32s" repeatCount="indefinite"/>` +
+        sceneAnimation("opacity", [[0, 0], [10.2, 0], [11.5, 1], [16.6, 1], [18.2, 0]]) +
         [[92, 58, "0s"], [112, 76, "1.1s"], [77, 42, "1.8s"]].map(([x, y, begin]) =>
             `<g transform="translate(${x} ${y})" shape-rendering="crispEdges"><g opacity="0.8">` +
             `<animateTransform attributeName="transform" type="translate" values="0 0;4 -15" dur="2.8s" begin="${begin}" repeatCount="indefinite"/>` +
@@ -398,23 +446,24 @@ function mealBowl(pal: Pal, level: number): string {
     return parts.join("");
 }
 
-function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean }): string[] {
+function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean }, seed: number): string[] {
     const { level, hungry } = feeding;
     const start = hungry ? CAT_AT_BOWL : HOME_X;
+    const play = playTracks(seed, hungry);
     const parts = [
-        `<g data-role="gentle-feeding" data-mood="${hungry ? "hungry" : "content"}">`,
+        `<g data-role="gentle-feeding" data-mood="${hungry ? "hungry" : "content"}" data-play-seed="${seed}" data-play-actions="${play.actions}">`,
         `<rect x="${HOME_X - 16}" y="${GROUND_Y - 40}" width="80" height="40" fill="none" stroke="${pal.ground}" stroke-width="2"/>`,
         `<path d="M${HOME_X - 16} 118 L${HOME_X + 24} 106 L${HOME_X + 64} 118" fill="none" stroke="${pal.ground}" stroke-width="2"/>`,
-        `<g transform="translate(${YARN_X} 0)">${yarnProp(pal, 32).join("")}</g>`,
+        `<g data-role="play-yarn" transform="translate(${YARN_X} 0)"><g>${play.ball}` +
+            `<path data-role="yarn-thread" d="M18 145 Q5 157 -7 145" fill="none" stroke="${pal.yarn}" stroke-width="2" opacity="0">${play.thread}</path>` +
+            `<g shape-rendering="crispEdges">${play.roll}${yarnProp(pal, PLAY_LOOP_SECONDS).join("")}</g></g></g>`,
         `<g data-role="cat-position" transform="translate(${start} 0)">`,
+        play.cat,
+        `<g data-role="play-hop">${play.hop}`,
     ];
-    if (!hungry) {
-        const xs = [HOME_X, HOME_X, CAT_AT_BOWL, CAT_AT_BOWL, CAT_AT_YARN, CAT_AT_YARN, HOME_X, HOME_X];
-        parts.push(`<animateTransform attributeName="transform" type="translate" values="${xs.map(x => `${x} 0`).join(";")}" keyTimes="0;0.10;0.22;0.54;0.66;0.76;0.90;1" calcMode="spline" keySplines="${Array(7).fill("0.4 0 0.2 1").join(";")}" dur="32s" repeatCount="indefinite"/>`);
-    }
     // One solid silhouette moves by two pixels: no detached head or large gulp.
     parts.push(`<g data-role="gentle-nibble">`);
-    if (!hungry) parts.push(`<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 2;0 0;0 2;0 0;0 0" keyTimes="0;0.24;0.28;0.31;0.35;0.38;1" dur="32s" repeatCount="indefinite"/>`);
+    if (!hungry) parts.push(sceneAnimation("transform", [[0, "0 0"], [7.68, "0 0"], [8.96, "0 2"], [9.92, "0 0"], [11.2, "0 2"], [12.16, "0 0"]], "translate"));
     // Keep adjacent sprite rows solid at fractional animation positions.
     parts.push(`<g data-role="cat-silhouette" shape-rendering="crispEdges">`);
     parts.push(...rects(sprites.SIT_FRONT, { X: pal.body, p: pal.pink, o: pal.body }, 0, CAT_Y));
@@ -426,26 +475,30 @@ function gentleFeedingScene(pal: Pal, feeding: { level: number; hungry: boolean 
     parts.push("</g>");
     parts.push(`<rect x="22" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/><rect x="85" y="103" width="12" height="5" rx="2.5" fill="${pal.pink}" opacity="0.7"/>`);
     if (hungry) {
-        parts.push(gentleFace(pal, false, true));
+        parts.push(`<g opacity="1">${sceneAnimation("opacity", [[0, 1], [21, 1], [22, 0], [65, 0], [68, 1]])}${gentleFace(pal, false, true)}</g>`);
+        parts.push(`<g opacity="0">${sceneAnimation("opacity", [[0, 0], [21, 0], [22, 1], [65, 1], [68, 0]])}${gentleFace(pal, false, false)}</g>`);
     } else {
-        parts.push(`<g opacity="0"><animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;0.24;0.26;0.55;0.58;1" dur="32s" repeatCount="indefinite"/>${gentleFace(pal, false, false)}</g>`);
-        parts.push(`<g opacity="1"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.24;0.26;0.55;0.58;1" dur="32s" repeatCount="indefinite"/>${gentleFace(pal, true, false)}</g>`);
-        parts.push(`<g data-role="snack-paw" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.24;0.26;0.36;0.39;1" dur="32s" repeatCount="indefinite"/>` +
+        parts.push(`<g opacity="0">${sceneAnimation("opacity", [[0, 1], [7.68, 1], [8.32, 0], [17.6, 0], [18.56, 1]])}${gentleFace(pal, false, false)}</g>`);
+        parts.push(`<g opacity="1">${sceneAnimation("opacity", [[0, 0], [7.68, 0], [8.32, 1], [17.6, 1], [18.56, 0]])}${gentleFace(pal, true, false)}</g>`);
+        parts.push(`<g data-role="snack-paw" opacity="0">${sceneAnimation("opacity", [[0, 0], [7.68, 0], [8.32, 1], [11.52, 1], [12.48, 0]])}` +
             `<path d="M88 126 Q76 123 74 116" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
             `<circle cx="74" cy="116" r="5" fill="${pal.body}"/></g>`);
     }
-    parts.push("</g>");
+    parts.push(`<g data-role="play-paw" opacity="0">${play.paw}` +
+        `<path d="M96 136 Q113 143 130 142" fill="none" stroke="${pal.collar}" stroke-width="8" stroke-linecap="round"/>` +
+        `<ellipse cx="132" cy="142" rx="6" ry="5" fill="${pal.body}"/></g>`);
+    parts.push("</g></g>");
     if (!hungry) parts.push(feedingHearts(pal));
     parts.push("</g>", mealBowl(pal, level));
     if (hungry) {
         const width = 156;
         const x = Math.min(WIDTH - width - 14, CAT_AT_BOWL + 2);
-        const hint = level > 0 ? "&#x996D;&#x996D;&#x5FEB;&#x6CA1;&#x5566;~" : "&#x7B49;&#x4E00;&#x53E3;&#x996D;&#x996D;~";
+        const hint = level > 0 ? "Running low..." : "A little snack?";
         parts.push(`<g data-role="hungry-reminder" opacity="1">` +
-            `<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.18;0.22;0.47;0.51;1" dur="24s" repeatCount="indefinite"/>` +
+            sceneAnimation("opacity", [[0, 0], [3, 0], [4, 1], [10, 1], [11, 0], [73, 0], [74, 1], [78, 1], [79, 0]]) +
             `<rect x="${x}" y="16" width="${width}" height="32" rx="8" fill="${pal.bg}" stroke="${pal.ground}" stroke-width="1.5"/>` +
             `<path d="M${x + 28} 48 L${x + 36} 55 L${x + 41} 48" fill="${pal.bg}" stroke="${pal.ground}" stroke-width="1.5"/>` +
-            `<text x="${x + width / 2}" y="37" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" fill="${pal.text}">${hint}</text></g>`);
+            `<text x="${x + width / 2}" y="37" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="${pal.text}">${hint}</text></g>`);
     }
     parts.push("</g>");
     return parts;
@@ -468,6 +521,7 @@ export interface SceneOpts {
     compact?: boolean;
     quiet?: boolean;     // hide speech bubbles and public-activity labels
     feeding?: { level: number; hungry: boolean };
+    playSeed?: number;
 }
 
 export function buildSvg(state: string, caption: string, palette = "dark", greeting = "hey! welcome to my corner", contact = "", attribution = true, opts: SceneOpts = {}): string {
@@ -512,7 +566,7 @@ export function buildSvg(state: string, caption: string, palette = "dark", greet
         parts.push(...rects(sprites.LEMONADE, { y: pal.lemon, s: pal.pink }, BOWL_X + 110, GROUND_Y - 6 * 3, 3));
     }
     if (opts.feeding) {
-        parts.push(...gentleFeedingScene(pal, opts.feeding));
+        parts.push(...gentleFeedingScene(pal, opts.feeding, opts.playSeed ?? 1));
     } else if (state === "sleeping" || state === "hibernating") {
         parts.push(...sleepingCat(pal, colors, opts.topLang ?? ""));
     } else {

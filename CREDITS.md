@@ -1,6 +1,6 @@
 # Credits and Maintenance
 
-- Pixel cat: adapted from [prsdx/YourTomo](https://github.com/prsdx/YourTomo), commit `62052fd7f26da4d43bf5eb6d44499dcb6c82ecf9`, MIT license. Only `render.ts`, `sprites.ts`, and `state.ts` are vendored in `scripts/vendor/tomo/`. Changes: pale-blue palettes, compact mobile layout, accessible descriptions, gentle feeding poses, smiling faces, meal hearts, and a data-driven food bowl.
+- Pixel cat: adapted from [prsdx/YourTomo](https://github.com/prsdx/YourTomo), commit `62052fd7f26da4d43bf5eb6d44499dcb6c82ecf9`, MIT license. Only `render.ts`, `sprites.ts`, and `state.ts` are vendored in `scripts/vendor/tomo/`. Changes: pale-blue palettes, compact mobile layout, accessible descriptions, gentle feeding poses, smiling faces, meal hearts, a data-driven food bowl, and playful yarn routines.
 - Technology icons: [tandpfun/skill-icons](https://github.com/tandpfun/skill-icons), commit `7f7e691e71aec64e8354bf697835e009d1ad80f8`, MIT license in `assets/skill-icons-LICENSE`. Locally stored light/dark icon strips retain the upstream artwork.
 - Project screenshot: from this account's public [Agent_Platform](https://github.com/Sevrenaie/Agent_Platform) repository.
 - The original snowy-cat banner and paw trail are retained.
@@ -18,6 +18,13 @@ consumed over 48 hours of elapsed time. The calculation replays recent pushes
 in time order, discards overflow, and deduplicates event IDs. Private work and
 profile updates do not feed the cat. Food below 12.5% produces a gentle,
 occasional reminder; otherwise the cat nibbles, smiles, and releases hearts.
+
+Reminders are in English. Between meals the cat taps, chases, and tugs the
+yarn, with quiet pauses in an 80-second loop. Each snapshot seeds a new
+pseudo-random action order, timing, and travel distance, shared across themes
+and screen sizes. A hungry cat still plays, but more gently, and returns to
+the bowl for its reminder. This is pre-rendered SVG animation, not per-visitor
+randomness or pointer interaction. Reduced-motion artwork remains still.
 
 The workflow runs on a six-hour schedule and can be run manually. GitHub may
 delay scheduled runs. The bowl is a snapshot from the available public feed,

@@ -7,6 +7,7 @@ import { getPublicData, prepareActivity, renderScenes, updateCat } from "./updat
 import { buildSvg } from "./vendor/tomo/render.ts";
 import { VALID_STATES } from "./vendor/tomo/state.ts";
 import { foodFromPushes } from "./feeding.mjs";
+import { makePlayPlan, PLAY_LOOP_SECONDS } from "./playtime.mjs";
 
 const now = new Date("2026-10-06T08:00:00Z");
 const repo = { private: false, full_name: "Sevrenaie/Agent_Platform", owner: { login: "Sevrenaie" } };
@@ -167,9 +168,13 @@ test("profile feeding uses gentle faces, meal hearts and only low-food reminders
       assert.equal(Number(svg.match(/data-food-level="([^"]+)"/)[1]), level);
       assert.match(svg, /data-role="gentle-feeding"/);
       assert.match(svg, /data-role="cat-silhouette" shape-rendering="crispEdges"/);
+      assert.match(svg, /data-role="play-yarn"/);
+      assert.match(svg, /data-role="play-paw"/);
       assert.doesNotMatch(svg, /one small step|quiet paws|PUBLIC ACTIVITY|SNAPSHOT/);
+      assert.doesNotMatch(svg, /&#x(?:996D|7B49);|[\u4e00-\u9fff]/);
       if (hungry) {
         assert.match(svg, /data-role="hungry-reminder"/);
+        assert.ok(svg.includes(level ? "Running low..." : "A little snack?"));
         assert.match(svg, /data-face="hungry"/);
         assert.doesNotMatch(svg, /data-role="meal-hearts"|data-role="little-bite"/);
       } else {
@@ -182,4 +187,41 @@ test("profile feeding uses gentle faces, meal hearts and only low-food reminders
       }
     }
   }
+});
+
+test("play plans vary per snapshot and keep gentle, bounded actions even when hungry", () => {
+  const plans = new Set();
+  for (let seed = 1700000000; seed < 1700000064; seed++) {
+    const normal = makePlayPlan(seed);
+    const hungry = makePlayPlan(seed, true);
+    assert.deepEqual(makePlayPlan(seed), normal);
+    assert.deepEqual(normal.map(beat => beat.action).sort(), ["chase", "tap", "tug"]);
+    for (const [index, beat] of normal.entries()) {
+      assert.ok(beat.at >= 25 && beat.at + 6 < 65);
+      assert.ok(beat.distance > 0 && beat.distance <= 38);
+      assert.equal(hungry[index].action, beat.action);
+      assert.equal(hungry[index].at, beat.at);
+      assert.ok(hungry[index].distance <= beat.distance);
+    }
+    plans.add(JSON.stringify(normal));
+  }
+  assert.ok(plans.size > 30);
+  assert.equal(PLAY_LOOP_SECONDS, 80);
+});
+
+test("the same activity snapshot uses one play plan across themes and sizes", () => {
+  const activity = prepareActivity({ events: [], repos: [] }, now);
+  const later = prepareActivity({ events: [], repos: [] }, new Date(now.getTime() + 6 * 3600000));
+  assert.notEqual(activity.playSeed, later.playSeed);
+  const patterns = new Set();
+  for (const svg of Object.values(renderScenes(activity))) {
+    assert.ok(svg.includes(`data-play-seed="${activity.playSeed}"`));
+    patterns.add(svg.match(/data-play-actions="([^"]+)"/)[1]);
+    const position = svg.match(/data-role="cat-position"[^>]*>\s*(<animateTransform[^>]+\/>)/)[1];
+    const xs = position.match(/values="([^"]+)"/)[1].split(";").map(value => Number(value.split(" ")[0]));
+    assert.equal(xs[0], xs.at(-1));
+    assert.ok(new Set(xs).size >= 3, "A hungry cat still visits and chases the yarn");
+    assert.match(position, /dur="80s"/);
+  }
+  assert.equal(patterns.size, 1);
 });

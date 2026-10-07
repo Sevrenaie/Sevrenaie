@@ -53,6 +53,7 @@ export function prepareActivity(data, now = new Date()) {
     ...status,
     state: feeding.hungry ? "hungry" : status.state,
     feeding,
+    playSeed: Math.floor(now.getTime() / 1000),
     hackingOn: lastPushedRepo(events) ?? "",
     hour: ownerHour(now),
     updatedAt: now.toISOString().slice(0, 16).replace("T", " ") + " UTC",
